@@ -16,12 +16,15 @@ import com.google.mediapipe.solutions.hands.HandsResult
 
 @RequiresApi(Build.VERSION_CODES.N)
 class MainActivity : AppCompatActivity() {
-    private val TAG = "MainActivity"
+
+    companion object {
+        // Run the pipeline and the model inference on GPU or CPU.
+        private const val RUN_ON_GPU = true
+
+        private const val TAG = "MainActivity"
+    }
 
     private var hands: Hands? = null
-
-    // Run the pipeline and the model inference on GPU or CPU.
-    private val RUN_ON_GPU = true
 
     private enum class InputSource {
         UNKNOWN, CAMERA
@@ -44,7 +47,7 @@ class MainActivity : AppCompatActivity() {
             // Restarts the camera and the opengl surface rendering.
             cameraInput = CameraInput(this).apply {
                 setNewFrameListener { textureFrame: TextureFrame? ->
-                    hands!!.send(
+                    hands?.send(
                         textureFrame
                     )
                 }
@@ -56,7 +59,7 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         if (inputSource == InputSource.CAMERA) {
-            cameraInput!!.close()
+            cameraInput?.close()
         }
     }
 
@@ -84,7 +87,7 @@ class MainActivity : AppCompatActivity() {
                 .setRunOnGpu(RUN_ON_GPU)
                 .build()
         )
-        hands!!.setErrorListener { message: String, e: RuntimeException? ->
+        hands?.setErrorListener { message: String, e: RuntimeException? ->
             Log.e(
                 TAG,
                 "MediaPipe Hands error:$message"
@@ -93,12 +96,12 @@ class MainActivity : AppCompatActivity() {
         if (inputSource == InputSource.CAMERA) {
             cameraInput = CameraInput(this)
             cameraInput?.setNewFrameListener { textureFrame: TextureFrame? ->
-                hands!!.send(
+                hands?.send(
                     textureFrame
                 )
             }
         }
-        hands!!.setResultListener { handsResult: HandsResult ->
+        hands?.setResultListener { handsResult: HandsResult ->
             logWristLandmark(handsResult,  /*showPixelValues=*/false)
         }
         if (inputSource == InputSource.CAMERA) {
@@ -108,10 +111,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun startCamera() {
         val frameLayout = findViewById<FrameLayout>(R.id.preview_display_layout)
-
+        val hands = hands ?: return
         cameraInput?.start(
             this,
-            hands!!.glContext,
+            hands.glContext,
             CameraInput.CameraFacing.FRONT,
             frameLayout.width,
             frameLayout.height
