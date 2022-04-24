@@ -11,7 +11,6 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.mediapipe.framework.TextureFrame
 import com.google.mediapipe.solutioncore.CameraInput
 import com.google.mediapipe.solutioncore.SolutionGlSurfaceView
-import com.google.mediapipe.solutioncore.VideoInput
 import com.google.mediapipe.solutions.hands.HandLandmark
 import com.google.mediapipe.solutions.hands.Hands
 import com.google.mediapipe.solutions.hands.HandsOptions
@@ -27,13 +26,10 @@ class MainActivity : AppCompatActivity() {
     private val RUN_ON_GPU = true
 
     private enum class InputSource {
-        UNKNOWN, VIDEO, CAMERA
+        UNKNOWN, CAMERA
     }
 
     private var inputSource = InputSource.UNKNOWN
-
-    // Video demo UI and video loader components.
-    private var videoInput: VideoInput? = null
 
     // Live camera demo UI and camera components.
     private var cameraInput: CameraInput? = null
@@ -61,8 +57,6 @@ class MainActivity : AppCompatActivity() {
                 post { startCamera() }
                 setVisibility(View.VISIBLE)
             }
-        } else if (inputSource == InputSource.VIDEO) {
-            videoInput?.resume()
         }
     }
 
@@ -71,8 +65,6 @@ class MainActivity : AppCompatActivity() {
         if (inputSource == InputSource.CAMERA) {
             glSurfaceView?.visibility = View.GONE
             cameraInput!!.close()
-        } else if (inputSource == InputSource.VIDEO) {
-            videoInput?.pause()
         }
     }
 
@@ -112,14 +104,6 @@ class MainActivity : AppCompatActivity() {
                 hands!!.send(
                     textureFrame
                 )
-            }
-        } else if (inputSource == InputSource.VIDEO) {
-            videoInput = VideoInput(this).apply {
-                setNewFrameListener { textureFrame: TextureFrame? ->
-                    hands!!.send(
-                        textureFrame
-                    )
-                }
             }
         }
 
@@ -164,10 +148,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun stopCurrentPipeline() {
         cameraInput?.run {
-            setNewFrameListener(null)
-            close()
-        }
-        videoInput?.run {
             setNewFrameListener(null)
             close()
         }
