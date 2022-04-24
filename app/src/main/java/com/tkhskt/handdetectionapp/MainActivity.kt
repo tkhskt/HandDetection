@@ -3,14 +3,12 @@ package com.tkhskt.handdetectionapp
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import android.view.View
 import android.widget.Button
 import android.widget.FrameLayout
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import com.google.mediapipe.framework.TextureFrame
 import com.google.mediapipe.solutioncore.CameraInput
-import com.google.mediapipe.solutioncore.SolutionGlSurfaceView
 import com.google.mediapipe.solutions.hands.HandLandmark
 import com.google.mediapipe.solutions.hands.Hands
 import com.google.mediapipe.solutions.hands.HandsOptions
@@ -34,8 +32,6 @@ class MainActivity : AppCompatActivity() {
     // Live camera demo UI and camera components.
     private var cameraInput: CameraInput? = null
 
-    private var glSurfaceView: SolutionGlSurfaceView<HandsResult>? = null
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -53,17 +49,13 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
             }
-            glSurfaceView?.apply {
-                post { startCamera() }
-                setVisibility(View.VISIBLE)
-            }
+            startCamera()
         }
     }
 
     override fun onPause() {
         super.onPause()
         if (inputSource == InputSource.CAMERA) {
-            glSurfaceView?.visibility = View.GONE
             cameraInput!!.close()
         }
     }
@@ -106,43 +98,23 @@ class MainActivity : AppCompatActivity() {
                 )
             }
         }
-
-        // Initializes a new Gl surface view with a user-defined HandsResultGlRenderer.
-        glSurfaceView = SolutionGlSurfaceView(this, hands!!.glContext, hands!!.glMajorVersion)
-        glSurfaceView?.apply {
-            setSolutionResultRenderer(HandsResultGlRenderer())
-            setRenderInputImage(true)
-        }
         hands!!.setResultListener { handsResult: HandsResult ->
             logWristLandmark(handsResult,  /*showPixelValues=*/false)
-            glSurfaceView?.run {
-                setRenderData(handsResult)
-                requestRender()
-            }
         }
-
-        // The runnable to start camera after the gl surface view is attached.
-        // For video input source, videoInput.start() will be called when the video uri is available.
         if (inputSource == InputSource.CAMERA) {
-            glSurfaceView?.post { startCamera() }
+            startCamera()
         }
-
-        // Updates the preview layout.
-        val frameLayout = findViewById<FrameLayout>(R.id.preview_display_layout)
-        frameLayout.removeAllViewsInLayout()
-        frameLayout.addView(glSurfaceView)
-        glSurfaceView?.visibility = View.VISIBLE
-        frameLayout.requestLayout()
     }
 
     private fun startCamera() {
-        val view = glSurfaceView ?: return
+        val frameLayout = findViewById<FrameLayout>(R.id.preview_display_layout)
+
         cameraInput?.start(
             this,
             hands!!.glContext,
             CameraInput.CameraFacing.FRONT,
-            view.width,
-            view.height
+            frameLayout.width,
+            frameLayout.height
         )
     }
 
@@ -151,7 +123,6 @@ class MainActivity : AppCompatActivity() {
             setNewFrameListener(null)
             close()
         }
-        glSurfaceView?.visibility = View.GONE
         hands?.close()
     }
 
