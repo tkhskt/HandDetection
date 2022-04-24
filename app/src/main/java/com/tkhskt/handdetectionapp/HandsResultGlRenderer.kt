@@ -8,10 +8,12 @@ import com.google.mediapipe.solutions.hands.HandsResult
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
+import kotlin.math.cos
+import kotlin.math.sin
 
 
 /** A custom implementation of [ResultGlRenderer] to render [HandsResult].  */
-class HandsResultGlRenderer : ResultGlRenderer<HandsResult?> {
+class HandsResultGlRenderer : ResultGlRenderer<HandsResult> {
     private var program = 0
     private var positionHandle = 0
     private var projectionMatrixHandle = 0
@@ -39,31 +41,31 @@ class HandsResultGlRenderer : ResultGlRenderer<HandsResult?> {
         if (result == null) {
             return
         }
-        GLES20.glUseProgram(program)
-        GLES20.glUniformMatrix4fv(projectionMatrixHandle, 1, false, projectionMatrix, 0)
-        GLES20.glLineWidth(CONNECTION_THICKNESS)
-        val numHands = result.multiHandLandmarks().size
-        for (i in 0 until numHands) {
-            val isLeftHand = result.multiHandedness()[i].label == "Left"
-            drawConnections(
-                result.multiHandLandmarks()[i].landmarkList,
-                if (isLeftHand) LEFT_HAND_CONNECTION_COLOR else RIGHT_HAND_CONNECTION_COLOR
-            )
-            for (landmark in result.multiHandLandmarks()[i].landmarkList) {
-                // Draws the landmark.
-                drawCircle(
-                    landmark.x,
-                    landmark.y,
-                    if (isLeftHand) LEFT_HAND_LANDMARK_COLOR else RIGHT_HAND_LANDMARK_COLOR
-                )
-                // Draws a hollow circle around the landmark.
-                drawHollowCircle(
-                    landmark.x,
-                    landmark.y,
-                    if (isLeftHand) LEFT_HAND_HOLLOW_CIRCLE_COLOR else RIGHT_HAND_HOLLOW_CIRCLE_COLOR
-                )
-            }
-        }
+//        GLES20.glUseProgram(program)
+//        GLES20.glUniformMatrix4fv(projectionMatrixHandle, 1, false, projectionMatrix, 0)
+//        GLES20.glLineWidth(CONNECTION_THICKNESS)
+//        val numHands = result.multiHandLandmarks().size
+//        for (i in 0 until numHands) {
+//            val isLeftHand = result.multiHandedness()[i].label == "Left"
+//            drawConnections(
+//                result.multiHandLandmarks()[i].landmarkList,
+//                if (isLeftHand) LEFT_HAND_CONNECTION_COLOR else RIGHT_HAND_CONNECTION_COLOR
+//            )
+//            for (landmark in result.multiHandLandmarks()[i].landmarkList) {
+//                // Draws the landmark.
+//                drawCircle(
+//                    landmark.x,
+//                    landmark.y,
+//                    if (isLeftHand) LEFT_HAND_LANDMARK_COLOR else RIGHT_HAND_LANDMARK_COLOR
+//                )
+//                // Draws a hollow circle around the landmark.
+//                drawHollowCircle(
+//                    landmark.x,
+//                    landmark.y,
+//                    if (isLeftHand) LEFT_HAND_HOLLOW_CIRCLE_COLOR else RIGHT_HAND_HOLLOW_CIRCLE_COLOR
+//                )
+//            }
+//        }
     }
 
     /**
@@ -76,73 +78,73 @@ class HandsResultGlRenderer : ResultGlRenderer<HandsResult?> {
         GLES20.glDeleteProgram(program)
     }
 
-    private fun drawConnections(
-        handLandmarkList: List<NormalizedLandmark>,
-        colorArray: FloatArray
-    ) {
-        GLES20.glUniform4fv(colorHandle, 1, colorArray, 0)
-        for (c in Hands.HAND_CONNECTIONS) {
-            val start = handLandmarkList[c.start()]
-            val end = handLandmarkList[c.end()]
-            val vertex = floatArrayOf(start.x, start.y, end.x, end.y)
-            val vertexBuffer: FloatBuffer = ByteBuffer.allocateDirect(vertex.size * 4)
-                .order(ByteOrder.nativeOrder())
-                .asFloatBuffer()
-                .put(vertex)
-            vertexBuffer.position(0)
-            GLES20.glEnableVertexAttribArray(positionHandle)
-            GLES20.glVertexAttribPointer(positionHandle, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer)
-            GLES20.glDrawArrays(GLES20.GL_LINES, 0, 2)
-        }
-    }
-
-    private fun drawCircle(x: Float, y: Float, colorArray: FloatArray) {
-        GLES20.glUniform4fv(colorHandle, 1, colorArray, 0)
-        val vertexCount = NUM_SEGMENTS + 2
-        val vertices = FloatArray(vertexCount * 3)
-        vertices[0] = x
-        vertices[1] = y
-        vertices[2] = 0f
-        for (i in 1 until vertexCount) {
-            val angle = 2.0f * i * Math.PI.toFloat() / NUM_SEGMENTS
-            val currentIndex = 3 * i
-            vertices[currentIndex] = x + (LANDMARK_RADIUS * Math.cos(angle.toDouble())).toFloat()
-            vertices[currentIndex + 1] =
-                y + (LANDMARK_RADIUS * Math.sin(angle.toDouble())).toFloat()
-            vertices[currentIndex + 2] = 0f
-        }
-        val vertexBuffer: FloatBuffer = ByteBuffer.allocateDirect(vertices.size * 4)
-            .order(ByteOrder.nativeOrder())
-            .asFloatBuffer()
-            .put(vertices)
-        vertexBuffer.position(0)
-        GLES20.glEnableVertexAttribArray(positionHandle)
-        GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer)
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, vertexCount)
-    }
-
-    private fun drawHollowCircle(x: Float, y: Float, colorArray: FloatArray) {
-        GLES20.glUniform4fv(colorHandle, 1, colorArray, 0)
-        val vertexCount = NUM_SEGMENTS + 1
-        val vertices = FloatArray(vertexCount * 3)
-        for (i in 0 until vertexCount) {
-            val angle = 2.0f * i * Math.PI.toFloat() / NUM_SEGMENTS
-            val currentIndex = 3 * i
-            vertices[currentIndex] =
-                x + (HOLLOW_CIRCLE_RADIUS * Math.cos(angle.toDouble())).toFloat()
-            vertices[currentIndex + 1] =
-                y + (HOLLOW_CIRCLE_RADIUS * Math.sin(angle.toDouble())).toFloat()
-            vertices[currentIndex + 2] = 0f
-        }
-        val vertexBuffer: FloatBuffer = ByteBuffer.allocateDirect(vertices.size * 4)
-            .order(ByteOrder.nativeOrder())
-            .asFloatBuffer()
-            .put(vertices)
-        vertexBuffer.position(0)
-        GLES20.glEnableVertexAttribArray(positionHandle)
-        GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer)
-        GLES20.glDrawArrays(GLES20.GL_LINE_STRIP, 0, vertexCount)
-    }
+//    private fun drawConnections(
+//        handLandmarkList: List<NormalizedLandmark>,
+//        colorArray: FloatArray
+//    ) {
+//        GLES20.glUniform4fv(colorHandle, 1, colorArray, 0)
+//        for (c in Hands.HAND_CONNECTIONS) {
+//            val start = handLandmarkList[c.start()]
+//            val end = handLandmarkList[c.end()]
+//            val vertex = floatArrayOf(start.x, start.y, end.x, end.y)
+//            val vertexBuffer: FloatBuffer = ByteBuffer.allocateDirect(vertex.size * 4)
+//                .order(ByteOrder.nativeOrder())
+//                .asFloatBuffer()
+//                .put(vertex)
+//            vertexBuffer.position(0)
+//            GLES20.glEnableVertexAttribArray(positionHandle)
+//            GLES20.glVertexAttribPointer(positionHandle, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer)
+//            GLES20.glDrawArrays(GLES20.GL_LINES, 0, 2)
+//        }
+//    }
+//
+//    private fun drawCircle(x: Float, y: Float, colorArray: FloatArray) {
+//        GLES20.glUniform4fv(colorHandle, 1, colorArray, 0)
+//        val vertexCount = NUM_SEGMENTS + 2
+//        val vertices = FloatArray(vertexCount * 3)
+//        vertices[0] = x
+//        vertices[1] = y
+//        vertices[2] = 0f
+//        for (i in 1 until vertexCount) {
+//            val angle = 2.0f * i * Math.PI.toFloat() / NUM_SEGMENTS
+//            val currentIndex = 3 * i
+//            vertices[currentIndex] = x + (LANDMARK_RADIUS * cos(angle.toDouble())).toFloat()
+//            vertices[currentIndex + 1] =
+//                y + (LANDMARK_RADIUS * sin(angle.toDouble())).toFloat()
+//            vertices[currentIndex + 2] = 0f
+//        }
+//        val vertexBuffer: FloatBuffer = ByteBuffer.allocateDirect(vertices.size * 4)
+//            .order(ByteOrder.nativeOrder())
+//            .asFloatBuffer()
+//            .put(vertices)
+//        vertexBuffer.position(0)
+//        GLES20.glEnableVertexAttribArray(positionHandle)
+//        GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer)
+//        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, vertexCount)
+//    }
+//
+//    private fun drawHollowCircle(x: Float, y: Float, colorArray: FloatArray) {
+//        GLES20.glUniform4fv(colorHandle, 1, colorArray, 0)
+//        val vertexCount = NUM_SEGMENTS + 1
+//        val vertices = FloatArray(vertexCount * 3)
+//        for (i in 0 until vertexCount) {
+//            val angle = 2.0f * i * Math.PI.toFloat() / NUM_SEGMENTS
+//            val currentIndex = 3 * i
+//            vertices[currentIndex] =
+//                x + (HOLLOW_CIRCLE_RADIUS * cos(angle.toDouble())).toFloat()
+//            vertices[currentIndex + 1] =
+//                y + (HOLLOW_CIRCLE_RADIUS * sin(angle.toDouble())).toFloat()
+//            vertices[currentIndex + 2] = 0f
+//        }
+//        val vertexBuffer: FloatBuffer = ByteBuffer.allocateDirect(vertices.size * 4)
+//            .order(ByteOrder.nativeOrder())
+//            .asFloatBuffer()
+//            .put(vertices)
+//        vertexBuffer.position(0)
+//        GLES20.glEnableVertexAttribArray(positionHandle)
+//        GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer)
+//        GLES20.glDrawArrays(GLES20.GL_LINE_STRIP, 0, vertexCount)
+//    }
 
     companion object {
         private const val TAG = "HandsResultGlRenderer"

@@ -27,12 +27,10 @@ class MainActivity : AppCompatActivity() {
     private val RUN_ON_GPU = true
 
     private enum class InputSource {
-        UNKNOWN, IMAGE, VIDEO, CAMERA
+        UNKNOWN, VIDEO, CAMERA
     }
 
     private var inputSource = InputSource.UNKNOWN
-
-    private var imageView: HandsResultImageView? = null
 
     // Video demo UI and video loader components.
     private var videoInput: VideoInput? = null
@@ -45,43 +43,43 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-//        setupStaticImageDemoUiComponents()
-//        setupVideoDemoUiComponents()
         setupLiveDemoUiComponents()
-        imageView = HandsResultImageView(this)
     }
 
     override fun onResume() {
         super.onResume()
         if (inputSource == InputSource.CAMERA) {
             // Restarts the camera and the opengl surface rendering.
-            cameraInput = CameraInput(this)
-            cameraInput!!.setNewFrameListener { textureFrame: TextureFrame? ->
-                hands!!.send(
-                    textureFrame
-                )
+            cameraInput = CameraInput(this).apply {
+                setNewFrameListener { textureFrame: TextureFrame? ->
+                    hands!!.send(
+                        textureFrame
+                    )
+                }
             }
-            glSurfaceView!!.post { startCamera() }
-            glSurfaceView!!.setVisibility(View.VISIBLE)
+            glSurfaceView?.apply {
+                post { startCamera() }
+                setVisibility(View.VISIBLE)
+            }
         } else if (inputSource == InputSource.VIDEO) {
-            videoInput!!.resume()
+            videoInput?.resume()
         }
     }
 
     override fun onPause() {
         super.onPause()
         if (inputSource == InputSource.CAMERA) {
-            glSurfaceView!!.visibility = View.GONE
+            glSurfaceView?.visibility = View.GONE
             cameraInput!!.close()
         } else if (inputSource == InputSource.VIDEO) {
-            videoInput!!.pause()
+            videoInput?.pause()
         }
     }
 
     /** Sets up the UI components for the live demo with camera input.  */
     private fun setupLiveDemoUiComponents() {
         val startCameraButton: Button = findViewById(R.id.button_start_camera)
-        startCameraButton.setOnClickListener { v ->
+        startCameraButton.setOnClickListener {
             if (inputSource == InputSource.CAMERA) {
                 return@setOnClickListener
             }
@@ -110,70 +108,71 @@ class MainActivity : AppCompatActivity() {
         }
         if (inputSource == InputSource.CAMERA) {
             cameraInput = CameraInput(this)
-            cameraInput!!.setNewFrameListener { textureFrame: TextureFrame? ->
+            cameraInput?.setNewFrameListener { textureFrame: TextureFrame? ->
                 hands!!.send(
                     textureFrame
                 )
             }
         } else if (inputSource == InputSource.VIDEO) {
-            videoInput = VideoInput(this)
-            videoInput!!.setNewFrameListener { textureFrame: TextureFrame? ->
-                hands!!.send(
-                    textureFrame
-                )
+            videoInput = VideoInput(this).apply {
+                setNewFrameListener { textureFrame: TextureFrame? ->
+                    hands!!.send(
+                        textureFrame
+                    )
+                }
             }
         }
 
         // Initializes a new Gl surface view with a user-defined HandsResultGlRenderer.
         glSurfaceView = SolutionGlSurfaceView(this, hands!!.glContext, hands!!.glMajorVersion)
-        glSurfaceView!!.setSolutionResultRenderer(HandsResultGlRenderer())
-        glSurfaceView!!.setRenderInputImage(true)
+        glSurfaceView?.apply {
+            setSolutionResultRenderer(HandsResultGlRenderer())
+            setRenderInputImage(true)
+        }
         hands!!.setResultListener { handsResult: HandsResult ->
             logWristLandmark(handsResult,  /*showPixelValues=*/false)
-            glSurfaceView!!.setRenderData(handsResult)
-            glSurfaceView!!.requestRender()
+            glSurfaceView?.run {
+                setRenderData(handsResult)
+                requestRender()
+            }
         }
 
         // The runnable to start camera after the gl surface view is attached.
         // For video input source, videoInput.start() will be called when the video uri is available.
         if (inputSource == InputSource.CAMERA) {
-            glSurfaceView!!.post { startCamera() }
+            glSurfaceView?.post { startCamera() }
         }
 
         // Updates the preview layout.
         val frameLayout = findViewById<FrameLayout>(R.id.preview_display_layout)
-        imageView!!.visibility = View.GONE
         frameLayout.removeAllViewsInLayout()
         frameLayout.addView(glSurfaceView)
-        glSurfaceView!!.visibility = View.VISIBLE
+        glSurfaceView?.visibility = View.VISIBLE
         frameLayout.requestLayout()
     }
 
     private fun startCamera() {
-        cameraInput!!.start(
+        val view = glSurfaceView ?: return
+        cameraInput?.start(
             this,
             hands!!.glContext,
             CameraInput.CameraFacing.FRONT,
-            glSurfaceView!!.width,
-            glSurfaceView!!.height
+            view.width,
+            view.height
         )
     }
 
     private fun stopCurrentPipeline() {
-        if (cameraInput != null) {
-            cameraInput!!.setNewFrameListener(null)
-            cameraInput!!.close()
+        cameraInput?.run {
+            setNewFrameListener(null)
+            close()
         }
-        if (videoInput != null) {
-            videoInput!!.setNewFrameListener(null)
-            videoInput!!.close()
+        videoInput?.run {
+            setNewFrameListener(null)
+            close()
         }
-        if (glSurfaceView != null) {
-            glSurfaceView!!.visibility = View.GONE
-        }
-        if (hands != null) {
-            hands!!.close()
-        }
+        glSurfaceView?.visibility = View.GONE
+        hands?.close()
     }
 
     private fun logWristLandmark(result: HandsResult, showPixelValues: Boolean) {
